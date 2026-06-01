@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <title>Rich Mango Ledger - 스마트 예산 & 가계부</title>
+    <script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+        var message = ['Message: ' + msg, 'Line: ' + lineNo].join(' - ');
+        var d = document.createElement('div');
+        d.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:red;color:white;z-index:999999;padding:20px;font-size:16px;overflow:scroll;';
+        d.innerHTML = 'FATAL ERROR: <br>' + message;
+        document.body.appendChild(d);
+        return false;
+    };
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- CSS Style -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tesseract.js OCR CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- Firebase Compatibility SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="dark-mode">
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card glass-panel">
+            <div class="login-logo-area">
+                <i data-lucide="wallet" class="login-logo-icon"></i>
+                <div class="login-logo-text">Rich Mango Ledger</div>
+                <span class="login-logo-sub" data-i18n="login-card-desc">스마트한 가계부 관리를 시작해보세요.</span>
+            </div>
+
+            <div class="login-tabs">
+                <button class="login-tab-btn active" id="login-tab" data-i18n="login-tab">로그인</button>
+                <button class="login-tab-btn" id="signup-tab" data-i18n="signup-tab">회원가입</button>
+            </div>
+
+            <form id="login-form" class="login-form">
+                <div class="login-form-group">
+                    <label for="login-email" data-i18n="email-label">이메일 주소</label>
+                    <input type="email" id="login-email" class="login-input" placeholder="example@domain.com" required>
+                </div>
+                <div class="login-form-group">
+                    <label for="login-password" data-i18n="password-label">비밀번호</label>
+                    <input type="password" id="login-password" class="login-input" placeholder="••••••••" required minlength="6">
+                </div>
+                <div class="login-form-group hidden" id="confirm-password-group">
+                    <label for="login-confirm-password" data-i18n="confirm-password-label">비밀번호 확인</label>
+                    <input type="password" id="login-confirm-password" class="login-input" placeholder="••••••••">
+                </div>
+                <button type="submit" class="login-submit-btn" id="login-submit-btn">
+                    <i data-lucide="log-in" id="login-btn-icon"></i>
+                    <span id="login-btn-text" data-i18n="login-btn">로그인</span>
+                </button>
+            </form>
+
+            <div class="login-divider" id="login-divider-el">or</div>
+
+            <button type="button" class="google-btn" id="google-login-btn">
+                <svg class="google-icon" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                <span data-i18n="google-login-btn">Google 계정으로 로그인</span>
+            </button>
+            <div class="login-download-area" style="margin-top: 24px; text-align: center;">
+                <a href="./app-debug.bin" download="RichMangoLedger.apk" class="download-app-btn" style="color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; transition: color 0.2s;">
+                    <i data-lucide="smartphone"></i>
+                    <span data-i18n="download-app">안드로이드 앱 (APK) 다운로드</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container hidden" id="app-container-el">
+        
+        <!-- Left Sidebar Navigation -->
+        <aside class="app-sidebar">
+            <div class="logo-area">
+                <img src="./favicon.png" alt="Rich Mango Ledger" class="logo-icon" style="width: 40px; height: 40px; border-radius: 10px; object-fit: cover;">
+                <div class="logo-text">
+                    <h1>Rich Mango Ledger</h1>
+                    <span class="logo-sub" id="logo-sub-text" data-i18n="logo-sub">리치망고 가계부</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" data-view="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span data-i18n="menu-dashboard">대시보드</span>
+                </button>
+                <button class="nav-btn" data-view="transactions">
+                    <i data-lucide="receipt"></i>
+                    <span data-i18n="menu-transactions">거래 내역</span>
+                </button>
+                <button class="nav-btn" data-view="budget">
+                    <i data-lucide="calculator"></i>
+                    <span data-i18n="menu-budget">예산 설정</span>
+                </button>
+                <button class="nav-btn" data-view="subscriptions">
+                    <i data-lucide="calendar-days"></i>
+                    <span data-i18n="menu-subscriptions">구독 관리</span>
+                </button>
+                <button class="nav-btn" data-view="reports">
+                    <i data-lucide="pie-chart"></i>
+                    <span data-i18n="menu-reports">상세 리포트</span>
+                </button>
+                <button class="nav-btn" data-view="settings">
+                    <i data-lucide="settings"></i>
+                    <span data-i18n="menu-settings">환경 설정</span>
+                </button>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="./app-debug.bin" download="RichMangoLedger.apk" class="nav-btn" style="text-decoration: none; color: var(--text-secondary); width: 100%; justify-content: flex-start;">
+                    <i data-lucide="download"></i>
+                    <span data-i18n="download-app">앱 다운로드</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Right Main Content Area -->
+        <main class="main-content">
+            <!-- Header (Dynamic Title & Month Picker) -->
+            <header class="content-header">
+                <div class="view-title-area">
+                    <h2 id="current-view-title" data-i18n="menu-dashboard">대시보드</h2>
+                </div>
+                
+                <div class="header-controls">
+                    <!-- Shared Month Selector (Visible for month-dependent tabs) -->
+                    <div class="month-selector" id="shared-month-selector">
+                        <button id="prev-month-btn" class="icon-btn" aria-label="이전 달">
+                            <i data-lucide="chevron-left"></i>
+                        </button>
+                        <div class="current-month-display">
+                            <input type="month" id="month-picker" class="month-picker-input">
+                        </div>
+                        <button id="next-month-btn" class="icon-btn" aria-label="다음 달">
+                            <i data-lucide="chevron-right"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="quick-settings">
+                        <button id="lang-toggle" class="lang-btn" aria-label="Language Toggle">
+                            <span>EN/KR</span>
+                        </button>
+                        <button id="theme-toggle" class="icon-btn" aria-label="테마 전환">
+                            <i data-lucide="sun" class="sun-icon"></i>
+                            <i data-lucide="moon" class="moon-icon"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ================= VIEW 1: DASHBOARD ================= -->
+            <section id="view-dashboard" class="view-section">
+                <!-- Stat Cards Grid -->
+                <div class="dashboard-grid">
+                    <div class="stat-card income-card">
+                        <div class="stat-header">
+                            <span class="stat-title" data-i18n="total-income-title">이번 달 총 수입</span>
+                            <i data-lucide="trending-up" class="stat-icon text-income"></i>
+                        </div>
+                        <div class="stat-value text-income" id="total-income">$0.00</div>
+                        <div class="stat-footer">
+                            <span id="income-count" data-i18n="count-tx" data-count="0">건수: 0건</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card expense-card">
+                        <div class="stat-header">
+                            <span class="stat-title" data-i18n="total-expense-title">이번 달 총 지출</span>
+                            <i data-lucide="trending-down" class="stat-icon text-expense"></i>
+                        </div>
+                        <div class="stat-value text-expense" id="total-expense">$0.00</div>
+                        <div class="stat-footer">
+                            <span id="expense-count" data-i18n="count-tx" data-count="0">건수: 0건</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card budget-card">
+                        <div class="stat-header">
+                            <span class="stat-title" data-i18n="budget-composition-title">가용 예산 구성</span>
+                            <i data-lucide="calculator" class="stat-icon text-budget"></i>
+                        </div>
+                        <div class="stat-value text-budget" id="total-available-budget">$0.00</div>
+                        <div class="stat-details">
+                            <div class="detail-row">
+                                <span data-i18n="base-budget-label">기본 예산:</span>
+                                <span id="base-budget-val">$0.00</span>
+                            </div>
+                            <div class="detail-row">
+                                <span data-i18n="carried-over-label">이월금:</span>
+                                <span id="carried-over-val">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card remaining-card" id="remaining-card">
+                        <div class="stat-header">
+                            <span class="stat-title" data-i18n="remaining-budget-title">남은 예산</span>
+                            <i data-lucide="pie-chart" class="stat-icon text-remaining" id="remaining-icon"></i>
+                        </div>
+                        <div class="stat-value text-remaining" id="remaining-budget">$0.00</div>
+                        <div class="stat-footer">
+                            <span id="remaining-status" data-i18n="status-no-budget">설정된 예산 없음</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Split Layout -->
+                <div class="dashboard-split">
+                    <!-- Left: Budget Progress & Mini Chart -->
+                    <div class="split-left">
+                        <div class="glass-panel progress-panel">
+                            <div class="budget-progress-header">
+                                <h3 data-i18n="budget-progress-title">예산 소진율</h3>
+                                <div class="budget-percentage" id="budget-percentage-text" data-i18n="percent-used" data-percent="0">0% 사용됨</div>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="budget-progress-bar"></div>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel chart-mini-panel">
+                            <h3 class="section-title" data-i18n="mini-chart-title">지출 구조 요약</h3>
+                            <div class="chart-container-mini">
+                                <canvas id="dashboard-category-chart"></canvas>
+                            </div>
+                            <div id="dashboard-chart-empty" class="chart-empty">
+                                <i data-lucide="info"></i>
+                                <p data-i18n="chart-empty-msg">지출 내역이 없습니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Recent Activity & Subscriptions Alert -->
+                    <div class="split-right">
+                        <div class="glass-panel recent-tx-panel">
+                            <h3 class="section-title" data-i18n="recent-tx-title">최근 거래 내역</h3>
+                            <ul id="dashboard-recent-tx-list" class="transaction-list-mini">
+                                <!-- Populated dynamically (last 5 tx) -->
+                            </ul>
+                            <div id="dashboard-list-empty" class="list-empty-mini">
+                                <p data-i18n="list-empty-msg">기록된 내역이 없습니다.</p>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel upcoming-subs-panel">
+                            <h3 class="section-title" data-i18n="upcoming-subs-title">이번 달 남은 정기 결제</h3>
+                            <ul id="dashboard-subs-list" class="subs-alert-list">
+                                <!-- Populated dynamically (active unpaid subs for this month) -->
+                            </ul>
+                            <div id="dashboard-subs-empty" class="list-empty-mini">
+                                <p data-i18n="subs-empty-msg">남은 정기 결제가 없습니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= VIEW 2: TRANSACTIONS ================= -->
+            <section id="view-transactions" class="view-section hidden">
+                <div class="main-layout">
+                    <!-- Left: Form & Dutch Pay Status -->
+                    <div class="layout-left">
+                        <div class="glass-panel form-panel">
+                            <h3 class="section-title" data-i18n="add-tx-title">내역 추가</h3>
+                            <form id="transaction-form" autocomplete="off">
+                                <div class="form-toggle-buttons">
+                                    <button type="button" id="type-expense-btn" class="toggle-btn active" data-type="expense" data-i18n="type-expense">지출</button>
+                                    <button type="button" id="type-income-btn" class="toggle-btn" data-type="income" data-i18n="type-income">수입</button>
+                                </div>
+
+                                <!-- Receipt scanner integrated directly -->
+                                <div class="receipt-scan-container" id="receipt-scan-container">
+                                    <div class="receipt-dropzone" id="receipt-dropzone">
+                                        <i data-lucide="file-image" class="scan-icon"></i>
+                                        <span class="scan-text" data-i18n="receipt-scan-text">영수증 또는 거래내역 스크린샷 첨부 (클릭 또는 이미지 드롭)</span>
+                                        <input type="file" id="receipt-file-input" accept="image/*" class="hidden">
+                                    </div>
+                                    <!-- Scan status & Preview panel -->
+                                    <div id="receipt-scan-status" class="receipt-scan-status hidden">
+                                        <div class="receipt-preview-wrapper">
+                                            <img id="receipt-preview-img" src="" alt="Receipt Preview">
+                                        </div>
+                                        <div class="scan-progress-box">
+                                            <div class="scan-status-text" id="scan-status-text">영수증 분석 준비 중...</div>
+                                            <div class="scan-progress-bar-bg">
+                                                <div class="scan-progress-bar-fg" id="scan-progress-bar-fg" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="scan-cancel-btn" id="scan-cancel-btn" aria-label="Cancel">
+                                            <i data-lucide="x" style="width:16px; height:16px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group half">
+                                        <label for="tx-date" data-i18n="form-date">날짜</label>
+                                        <input type="date" id="tx-date" required>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label for="tx-category" data-i18n="form-category">카테고리</label>
+                                        <select id="tx-category" required>
+                                            <!-- Dynamically populated -->
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="tx-amount" data-i18n="form-amount">금액</label>
+                                    <div class="amount-input-wrapper">
+                                        <span class="currency-label">$</span>
+                                        <input type="number" id="tx-amount" placeholder="0.00" required min="0.01" step="0.01">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="tx-memo" data-i18n="form-memo">메모 / 내용</label>
+                                    <input type="text" id="tx-memo" placeholder="예: 점심 식사, 급여" data-i18n-placeholder="memo-placeholder">
+                                </div>
+
+                                <!-- Dutch Pay fields integrated directly -->
+                                <div id="tx-dutchpay-toggle-wrapper" class="form-group checkbox-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin-top: 8px;">
+                                    <input type="checkbox" id="tx-dutchpay-enabled" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    <label for="tx-dutchpay-enabled" data-i18n="dutch-form-toggle-label" style="cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">더치페이(금액 분할) 적용</label>
+                                </div>
+                                <div id="tx-dutchpay-fields" class="form-group hidden" style="margin-top: 8px;">
+                                    <label for="tx-dutch-friends" data-i18n="dutch-form-friends">함께한 친구들</label>
+                                    <input type="text" id="tx-dutch-friends" placeholder="예: 민수, 수지 (쉼표 구분)">
+                                </div>
+
+                                <div class="form-actions-row" style="display: flex; gap: 8px; width: 100%; margin-top: 12px;">
+                                    <button type="submit" class="submit-btn" id="submit-btn-el" style="flex: 1; margin-top: 0;">
+                                        <i data-lucide="plus-circle"></i> <span data-i18n="submit-btn-text">등록하기</span>
+                                    </button>
+                                    <button type="button" class="secondary-btn hidden" id="cancel-edit-btn" style="height: 44px; margin-top: 0; display: none;">
+                                        <span data-i18n="cancel-btn-text">취소</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Dutch Pay Status List Panel inside Left layout -->
+                        <div class="glass-panel list-panel" style="margin-top: 20px;">
+                            <h3 class="section-title" data-i18n="dutch-list-title">더치페이 정산 현황</h3>
+                            <div class="transaction-list-wrapper" style="max-height: 350px;">
+                                <ul id="dutchpay-list" class="transaction-list">
+                                    <!-- Dynamically populated -->
+                                </ul>
+                                <div id="dutchpay-empty-message" class="list-empty">
+                                    <i data-lucide="split"></i>
+                                    <p data-i18n="dutch-empty-msg">등록된 더치페이 정산 내역이 없습니다.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Search & Table List -->
+                    <div class="layout-right">
+                        <div class="glass-panel list-panel">
+                            <div class="list-header">
+                                <h3 class="section-title" data-i18n="tx-list-title">거래 내역</h3>
+                                <div class="list-actions">
+                                    <div class="search-box">
+                                        <i data-lucide="search" class="search-icon"></i>
+                                        <input type="text" id="search-input" placeholder="메모 검색..." data-i18n-placeholder="search-placeholder">
+                                    </div>
+                                    <select id="filter-type">
+                                        <option value="all" data-i18n="filter-all">전체 내역</option>
+                                        <option value="expense" data-i18n="filter-expense">지출만</option>
+                                        <option value="income" data-i18n="filter-income">수입만</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="active-filters" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 16px;">
+                                <div style="display: flex; align-items: center; gap: 14px;">
+                                    <span class="transaction-count" id="filtered-count" data-i18n="result-count" data-count="0" style="margin-bottom: 0;">검색 결과: 0건</span>
+                                    <label id="tx-select-all-label" class="checkbox-container" style="font-size: 0.8rem; display: none; margin: 0; align-items: center; gap: 6px;">
+                                        <input type="checkbox" id="tx-select-all" style="width: 15px; height: 15px; margin: 0; cursor: pointer; accent-color: var(--primary-color);">
+                                        <span data-i18n="batch-select-all-label" style="font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">전체 선택</span>
+                                    </label>
+                                </div>
+                                <button type="button" id="delete-selected-btn" class="danger-btn" style="display: none; height: 32px; padding: 0 12px; font-size: 0.8rem; border-radius: 6px; margin: 0; align-items: center; gap: 6px;">
+                                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> <span id="delete-selected-btn-text">선택 삭제</span>
+                                </button>
+                            </div>
+
+                            <div class="transaction-list-wrapper">
+                                <ul id="transaction-list" class="transaction-list">
+                                    <!-- Dynamic content -->
+                                </ul>
+                                <div id="list-empty-message" class="list-empty">
+                                    <i data-lucide="receipt"></i>
+                                    <p data-i18n="list-empty-msg">등록된 내역이 없습니다.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= VIEW 3: BUDGET ================= -->
+            <section id="view-budget" class="view-section hidden">
+                <div class="budget-page-layout">
+                    <!-- Standard Budget & Carry-Over Settings -->
+                    <div class="glass-panel budget-settings-panel">
+                        <h3 class="section-title" data-i18n="menu-budget">예산 설정</h3>
+                        <div class="budget-settings-row">
+                            <div class="setting-group">
+                                <label for="input-base-budget" data-i18n="set-base-budget-label">이번 달 기본 예산 설정</label>
+                                <div class="input-with-btn">
+                                    <span class="unit">$</span>
+                                    <input type="number" id="input-base-budget" placeholder="0.00" min="0" step="0.01">
+                                    <button id="save-budget-btn" class="primary-btn" data-i18n="set-btn">설정</button>
+                                </div>
+                            </div>
+
+                            <div class="setting-group">
+                                <label data-i18n="carry-settings-label">이월 설정</label>
+                                <div class="toggle-container">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="toggle-carry-over" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span class="toggle-label" data-i18n="carry-balance-label">이전 달 잔액 자동 이월</span>
+                                </div>
+                                <div class="toggle-container sub-toggle">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="toggle-carry-deficit">
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span class="toggle-label text-muted" data-i18n="carry-deficit-label">초과 지출(적자)도 이월하여 차감</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Budget Limits Customization -->
+                    <div class="glass-panel category-budget-panel">
+                        <h3 class="section-title" data-i18n="category-budget-title">카테고리별 예산 한도 설정</h3>
+                        <p class="section-desc" data-i18n="category-budget-desc">각 지출 카테고리에 할당할 한도를 입력하여 소비를 제어하세요.</p>
+                        
+                        <div class="category-budgets-grid" id="category-budgets-list">
+                            <!-- Populated dynamically (one row per category with spend progress) -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= VIEW 4: SUBSCRIPTIONS ================= -->
+            <section id="view-subscriptions" class="view-section hidden">
+                <div class="main-layout">
+                    <!-- Left: Form -->
+                    <div class="layout-left">
+                        <div class="glass-panel form-panel">
+                            <h3 class="section-title" data-i18n="add-sub-title">구독 서비스 추가</h3>
+                            <form id="subscription-form" autocomplete="off">
+                                <div class="form-row">
+                                    <div class="form-group half">
+                                        <label for="sub-type" data-i18n="form-type">구분</label>
+                                        <select id="sub-type" required>
+                                            <option value="expense" data-i18n="type-expense">지출</option>
+                                            <option value="income" data-i18n="type-income">수입</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label for="sub-name" data-i18n="sub-form-name">서비스 이름</label>
+                                        <input type="text" id="sub-name" placeholder="예: Netflix, YouTube Premium" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group half">
+                                        <label for="sub-amount" data-i18n="form-amount">결제 금액</label>
+                                        <div class="amount-input-wrapper">
+                                            <span class="currency-label">$</span>
+                                            <input type="number" id="sub-amount" placeholder="0.00" required min="0.01" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label for="sub-category" data-i18n="form-category">카테고리</label>
+                                        <select id="sub-category" required>
+                                            <!-- Dynamically populated -->
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group half">
+                                        <label for="sub-cycle" data-i18n="sub-form-cycle">결제 주기</label>
+                                        <select id="sub-cycle" required>
+                                            <option value="monthly" data-i18n="sub-cycle-monthly">매월</option>
+                                            <option value="yearly" data-i18n="sub-cycle-yearly">매년</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label for="sub-date" data-i18n="sub-form-date">정기 결제일(일)</label>
+                                        <input type="number" id="sub-date" placeholder="1 ~ 31" required min="1" max="31">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="submit-btn" id="sub-submit-btn">
+                                    <i data-lucide="plus-circle"></i> <span data-i18n="sub-register-btn">구독 등록</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Right: Subscriptions List -->
+                    <div class="layout-right">
+                        <div class="glass-panel list-panel">
+                            <div class="list-header-flex">
+                                <h3 class="section-title" data-i18n="sub-list-title">구독 관리 목록</h3>
+                                <div class="sub-totals-container" style="display: flex; gap: 16px; align-items: center;">
+                                    <div class="sub-monthly-total" style="display: flex; align-items: center; gap: 6px;">
+                                        <span class="label" data-i18n="sub-monthly-expense-label" style="font-size: 0.82rem; font-weight:600; color: var(--text-muted);">고정 지출:</span>
+                                        <span class="value text-expense" id="sub-monthly-expense-val" style="font-size: 0.95rem; font-weight:700;">$0.00</span>
+                                    </div>
+                                    <div class="sub-monthly-total" style="display: flex; align-items: center; gap: 6px;">
+                                        <span class="label" data-i18n="sub-monthly-income-label" style="font-size: 0.82rem; font-weight:600; color: var(--text-muted);">고정 수입:</span>
+                                        <span class="value text-income" id="sub-monthly-income-val" style="font-size: 0.95rem; font-weight:700;">$0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="transaction-list-wrapper">
+                                <ul id="subscription-list" class="subscription-list-items">
+                                    <!-- Dynamically populated -->
+                                </ul>
+                                <div id="subs-empty-message" class="list-empty">
+                                    <i data-lucide="calendar-clock"></i>
+                                    <p data-i18n="subs-empty-msg">등록된 구독 서비스가 없습니다.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+            <!-- ================= VIEW 5: REPORTS ================= -->
+            <section id="view-reports" class="view-section hidden">
+                <div class="reports-page-layout">
+                    <!-- Advanced Analytics & Charts -->
+                    <div class="glass-panel charts-large-panel">
+                        <div class="charts-header">
+                            <h3 class="section-title" data-i18n="analytics-title">통계 분석 리포트</h3>
+                            <div class="chart-tabs">
+                                <button id="chart-tab-category" class="chart-tab-btn active" data-i18n="chart-tab-category">카테고리 지출</button>
+                                <button id="chart-tab-trend" class="chart-tab-btn" data-i18n="chart-tab-trend">월별 예산 대비 지출</button>
+                            </div>
+                        </div>
+
+                        <div class="chart-container-large">
+                            <canvas id="category-chart"></canvas>
+                            <canvas id="trend-chart" class="hidden"></canvas>
+                        </div>
+                        <div id="chart-empty-message" class="chart-empty">
+                            <i data-lucide="info"></i>
+                            <p data-i18n="chart-empty-msg">지출 내역이 없습니다.</p>
+                        </div>
+                    </div>
+
+                    <!-- Backup & CSV Export/Import Actions -->
+                    <div class="glass-panel data-actions-panel">
+                        <h3 class="section-title" data-i18n="data-management-title">데이터 관리</h3>
+                        <p class="section-desc" data-i18n="data-management-desc">가계부 데이터를 외부 파일로 내보내거나 가져옵니다.</p>
+                        
+                        <div class="data-actions-row">
+                            <button id="export-csv-btn" class="secondary-btn">
+                                <i data-lucide="download"></i> <span data-i18n="export-csv">CSV 파일 내보내기</span>
+                            </button>
+                            <button id="export-json-btn" class="secondary-btn">
+                                <i data-lucide="database"></i> <span data-i18n="export-json">JSON 백업 다운로드</span>
+                            </button>
+                            
+                            <div class="file-import-btn-group">
+                                <label for="import-file-input" class="secondary-btn upload-label">
+                                    <i data-lucide="upload"></i> <span data-i18n="import-data">데이터 파일 가져오기</span>
+                                </label>
+                                <input type="file" id="import-file-input" accept=".csv, .json, .pdf" class="hidden">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= VIEW 6: SETTINGS ================= -->
+            <section id="view-settings" class="view-section hidden">
+                <div class="settings-page-layout glass-panel">
+                    <h3 class="section-title" data-i18n="menu-settings">환경 설정</h3>
+                    
+                    <div class="settings-list">
+                        <!-- User Profile Card -->
+                        <div class="user-profile-card">
+                            <div class="user-avatar" id="user-avatar-el">
+                                <span id="user-avatar-initial">U</span>
+                            </div>
+                            <div class="user-info-text">
+                                <span class="user-email-display" id="user-email-display">user@example.com</span>
+                                <span class="user-provider-badge">
+                                    <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                                    <span id="user-provider-name">Firebase Auth</span>
+                                </span>
+                            </div>
+                            <button type="button" class="logout-action-btn" id="logout-btn-el" data-i18n="logout-btn">로그아웃</button>
+                        </div>
+                        <!-- Option 1: Currency -->
+                        <div class="settings-item">
+                            <div class="setting-info">
+                                <h4 data-i18n="settings-currency-title">표시 통화 단위</h4>
+                                <p data-i18n="settings-currency-desc">가계부 전체에 반영될 금액 기호를 선택하세요.</p>
+                            </div>
+                            <div class="setting-control">
+                                <select id="settings-currency" class="select-field">
+                                    <option value="USD">USD ($)</option>
+                                    <option value="KRW">KRW (₩)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                    <option value="GBP">GBP (£)</option>
+                                    <option value="JPY">JPY (¥)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Option 2: Language -->
+                        <div class="settings-item">
+                            <div class="setting-info">
+                                <h4 data-i18n="settings-lang-title">언어 설정 (Language)</h4>
+                                <p data-i18n="settings-lang-desc">사용할 다국어 설정을 지정하세요.</p>
+                            </div>
+                            <div class="setting-control">
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="lang-radio" value="ko" checked>
+                                        <span>한국어</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="lang-radio" value="en">
+                                        <span>English</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Option 3: Theme -->
+                        <div class="settings-item">
+                            <div class="setting-info">
+                                <h4 data-i18n="settings-theme-title">테마 모드</h4>
+                                <p data-i18n="settings-theme-desc">화면의 명도를 조절하는 테마 스타일을 고릅니다.</p>
+                            </div>
+                            <div class="setting-control">
+                                <div class="theme-switch-group">
+                                    <button class="theme-btn" id="theme-btn-light">
+                                        <i data-lucide="sun"></i> <span data-i18n="theme-light">라이트 모드</span>
+                                    </button>
+                                    <button class="theme-btn active" id="theme-btn-dark">
+                                        <i data-lucide="moon"></i> <span data-i18n="theme-dark">다크 모드</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Option 4: Category Management -->
+                        <div class="settings-item category-mgmt-item" style="flex-direction: column; align-items: stretch; gap: 20px; border-bottom: 1px solid var(--border-color); padding: 24px 0;">
+                            <div class="setting-info" style="margin-bottom: 8px;">
+                                <h4 data-i18n="settings-categories-title">카테고리 관리</h4>
+                                <p data-i18n="settings-categories-desc">나만의 가계부 카테고리를 만들고 이모티콘을 매핑해 보세요.</p>
+                            </div>
+                            
+                            <div class="category-mgmt-layout">
+                                <!-- Left: Category List -->
+                                <div class="category-mgmt-left">
+                                    <h5 style="font-size: 0.95rem; margin-bottom: 12px; font-weight:600;" data-i18n="cat-list-title">등록된 카테고리</h5>
+                                    <ul id="custom-category-list" class="custom-category-list-items">
+                                        <!-- Dynamically populated -->
+                                    </ul>
+                                </div>
+                                
+                                <!-- Right: Create Category Form -->
+                                <div class="category-mgmt-right" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); padding: 16px; border-radius: 12px;">
+                                    <h5 style="font-size: 0.95rem; margin-bottom: 12px; font-weight:600;" data-i18n="cat-add-title">새 카테고리 추가</h5>
+                                    <form id="custom-category-form" autocomplete="off" style="display: flex; flex-direction: column; gap: 12px;">
+                                        <div class="form-group">
+                                            <label for="new-cat-name" style="font-size: 0.8rem; font-weight:600; display:block; margin-bottom:4px;" data-i18n="cat-form-name">카테고리 이름</label>
+                                            <input type="text" id="new-cat-name" placeholder="예: 카페/디저트, 취미" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--input-bg); padding: 0 12px; color: var(--text-primary); outline:none;">
+                                        </div>
+                                        
+                                        <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 0;">
+                                            <div class="form-group half" style="flex: 1; margin-bottom: 0;">
+                                                <label for="new-cat-type" style="font-size: 0.8rem; font-weight:600; display:block; margin-bottom:4px;" data-i18n="cat-form-type">구분</label>
+                                                <select id="new-cat-type" required class="select-field" style="width: 100%;">
+                                                    <option value="expense" data-i18n="type-expense">지출</option>
+                                                    <option value="income" data-i18n="type-income">수입</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Emoji Preset Picker -->
+                                        <div class="form-group" style="margin-bottom: 8px;">
+                                            <label style="font-size: 0.8rem; font-weight:600; display:block; margin-bottom:6px;" data-i18n="cat-form-emoji">이모티콘 선택</label>
+                                            <div class="emoji-picker-grid" id="new-cat-emoji-picker">
+                                                <!-- Populate emoji buttons dynamically -->
+                                            </div>
+                                            <input type="hidden" id="new-cat-emoji-val" value="🍔">
+                                        </div>
+                                        
+                                        <!-- Color Picker -->
+                                        <div class="form-group" style="margin-bottom: 12px;">
+                                            <label style="font-size: 0.8rem; font-weight:600; display:block; margin-bottom:6px;" data-i18n="cat-form-color">색상 선택</label>
+                                            <div class="color-picker-grid" id="new-cat-color-picker">
+                                                <!-- Populate color circles dynamically -->
+                                            </div>
+                                            <input type="hidden" id="new-cat-color-val" value="#6366f1">
+                                        </div>
+                                        
+                                        <button type="submit" class="submit-btn" style="height: 38px; width: 100%; border-radius: 8px; font-size: 0.85rem; font-weight: 700; background: var(--primary-color); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 14px var(--primary-glow);">
+                                            <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i> <span data-i18n="cat-add-btn">카테고리 생성</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Option 5: App Version & Updates -->
+                        <div class="settings-item">
+                            <div class="setting-info">
+                                <h4 data-i18n="settings-app-title">안드로이드 앱 및 업데이트</h4>
+                                <p data-i18n="settings-app-desc">안드로이드 앱(APK) 최신 버전을 다운로드하거나 최신 웹 자원 업데이트를 적용합니다.</p>
+                            </div>
+                            <div class="setting-control" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <button type="button" id="force-reload-btn" class="primary-btn" style="height: 38px; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 0 16px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(99, 102, 241, 0.1); color: var(--primary-color);">
+                                    <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                                    <span data-i18n="settings-reload-btn">웹 업데이트 적용 (새로고침)</span>
+                                </button>
+                                <a href="./app-debug.bin" download="RichMangoLedger.apk" class="nav-btn" style="text-decoration: none; color: var(--text-secondary); background: var(--border-color); height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="smartphone"></i>
+                                    <span data-i18n="download-app">안드로이드 앱 (APK) 다운로드</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Option 6: Danger Zone -->
+                        <div class="settings-item danger-zone">
+                            <div class="setting-info">
+                                <h4 data-i18n="settings-reset-title" class="text-danger">가계부 데이터 전체 삭제</h4>
+                                <p data-i18n="settings-reset-desc">로컬에 저장된 모든 수입/지출 내역과 예산, 구독 설정을 지웁니다. 이 작업은 취소할 수 없습니다.</p>
+                            </div>
+                            <div class="setting-control">
+                                <button id="reset-all-data-btn" class="danger-btn">
+                                    <i data-lucide="trash-2"></i> <span data-i18n="reset-data-btn">데이터 전체 초기화</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Batch Import Modal -->
+    <div id="batch-import-modal" class="modal-overlay hidden">
+        <div class="modal-container glass-panel">
+            <div class="modal-header">
+                <h3 class="modal-title" data-i18n="batch-modal-title">일괄 내역 가져오기</h3>
+                <button type="button" class="modal-close-btn" id="batch-modal-close-btn" aria-label="Close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-desc" id="batch-modal-desc" data-i18n="batch-modal-desc">다음은 인식된 거래 내역 목록입니다. 가계부에 등록할 항목을 선택하고 세부 내용을 조정하세요.</div>
+            
+            <div class="batch-list-controls">
+                <label class="checkbox-container">
+                    <input type="checkbox" id="batch-select-all" checked>
+                    <span class="checkbox-label" data-i18n="batch-select-all-label">전체 선택</span>
+                </label>
+                <span class="batch-detected-count" id="batch-detected-count">감지된 거래: 0건</span>
+            </div>
+            
+            <div class="batch-list-wrapper">
+                <table class="batch-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check"></th>
+                            <th class="col-date" data-i18n="form-date">날짜</th>
+                            <th class="col-type" data-i18n="cat-form-type">구분</th>
+                            <th class="col-category" data-i18n="form-category">카테고리</th>
+                            <th class="col-memo" data-i18n="form-memo">메모 / 내용</th>
+                            <th class="col-amount" data-i18n="form-amount">금액</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batch-tx-tbody">
+                        <!-- Populated dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="secondary-btn" id="batch-cancel-btn" data-i18n="cancel-btn-text">취소</button>
+                <button type="button" class="primary-btn submit-btn" id="batch-submit-btn">
+                    <i data-lucide="check-circle-2"></i> <span id="batch-submit-btn-text" data-i18n="batch-import-btn">선택한 내역 등록하기</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Add Button -->
+    <button id="floating-add-btn" class="floating-add-btn" aria-label="Quick Add" style="display: none;">
+        <i data-lucide="plus"></i>
+    </button>
+
+    <!-- Quick Add Transaction Modal -->
+    <div id="quick-tx-modal" class="modal-overlay hidden">
+        <div class="modal-container glass-panel" style="max-width: 500px; padding: 24px;">
+            <div class="modal-header">
+                <h3 class="modal-title" data-i18n="quick-tx-title">빠른 거래 등록</h3>
+                <button type="button" class="modal-close-btn" id="quick-tx-close-btn" aria-label="Close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="quick-tx-form" autocomplete="off" style="margin-top: 16px;">
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="quick-tx-date" data-i18n="form-date">날짜</label>
+                        <input type="date" id="quick-tx-date" required>
+                    </div>
+                    <div class="form-group half">
+                        <label for="quick-tx-type" data-i18n="form-type">구분</label>
+                        <select id="quick-tx-type" required>
+                            <option value="expense" data-i18n="type-expense">지출</option>
+                            <option value="income" data-i18n="type-income">수입</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="quick-tx-category" data-i18n="form-category">카테고리</label>
+                        <select id="quick-tx-category" required>
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="form-group half">
+                        <label for="quick-tx-amount" data-i18n="form-amount">금액</label>
+                        <div class="amount-input-wrapper">
+                            <span class="currency-label">$</span>
+                            <input type="number" id="quick-tx-amount" placeholder="0.00" required min="0.01" step="0.01">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="quick-tx-memo" data-i18n="form-memo">메모 / 내용</label>
+                        <input type="text" id="quick-tx-memo" placeholder="예: 점심 식사, 급여" required>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" class="secondary-btn" id="quick-tx-cancel-btn" data-i18n="cancel-btn-text">취소</button>
+                    <button type="submit" class="primary-btn submit-btn" id="quick-tx-submit-btn">
+                        <i data-lucide="check-circle-2"></i> <span data-i18n="submit-btn-text">등록하기</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-message">메시지</span>
+    </div>
+
+    <!-- App Logic Script (Cache Busted) -->
+    <script src="app.js"></script>
+</body>
+</html>
